@@ -9,7 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{6B32
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{6DB068E5-6F75-4273-AFF4-07F763BEF029}"
 	ProjectSection(SolutionItems) = preProject
-		docker-azure-deploy.yml = docker-azure-deploy.yml
+		Azure_Container_Registry_deploy.yml = Azure_Container_Registry_deploy.yml
 	EndProjectSection
 EndProject
 Global
