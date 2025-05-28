@@ -30,7 +30,7 @@ jobs:
     - name: Build and Push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./MyTrackStackAPI
+        context: .
         file: ./MyTrackStackAPI/Dockerfile
         push: true
         tags: ${{ secrets.ACR_SERVER }}/mytrackstack-api:latest
