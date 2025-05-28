@@ -5,6 +5,13 @@ VisualStudioVersion = 17.12.35707.178 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyTrackStackAPI", "MyTrackStackAPI\MyTrackStackAPI.csproj", "{F3022079-A91A-40E3-B4E9-92B18F1BA38C}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{6B32EAB8-AA10-4278-BBBF-5458E16DE473}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{6DB068E5-6F75-4273-AFF4-07F763BEF029}"
+	ProjectSection(SolutionItems) = preProject
+		docker-azure-deploy.yml = docker-azure-deploy.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +25,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{6DB068E5-6F75-4273-AFF4-07F763BEF029} = {6B32EAB8-AA10-4278-BBBF-5458E16DE473}
 	EndGlobalSection
 EndGlobal

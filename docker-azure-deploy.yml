@@ -1,0 +1,33 @@
+name: Build and Deploy to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and tag Docker image
+      run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/mytrackstack:latest .
+
+    - name: Push Docker image
+      run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/mytrackstack:latest
+
+    - name: Trigger Azure to pull latest image (restart app)
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: YOUR_AZURE_APP_NAME
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+        images: ${{ secrets.DOCKERHUB_USERNAME }}/mytrackstack:latest
