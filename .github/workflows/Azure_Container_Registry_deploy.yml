@@ -1,13 +1,19 @@
-name: Build and Deploy to Azure App Service
+name: Build and Deploy Docker App to Azure Web App
 
 on:
   push:
     branches:
-      - master
+      - main  # or your deployment branch
+
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  ACR_SERVER: ${{ secrets.ACR_SERVER }}
-  AZURE_APP_NAME: ${{ secrets.AZURE_APP_NAME }}
+  ACR_NAME: mytrackstackregistry
+  IMAGE_NAME: mytrackstack-api
+  AZURE_WEBAPP_NAME: mytrackstack-api
+  DOCKER_TAG: latest
 
 jobs:
   build-and-deploy:
@@ -15,33 +21,30 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Log in to Azure Container Registry
-      uses: docker/login-action@v2
-      with:
-        registry: ${{ secrets.ACR_SERVER }}
-        username: ${{ secrets.ACR_USERNAME }}
-        password: ${{ secrets.ACR_PASSWORD }}
-
-    - name: Build and Push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: ./MyTrackStackAPI/Dockerfile
-        push: true
-        tags: ${{ secrets.ACR_SERVER }}/mytrackstack-api:latest
-
-    - name: Azure Login
+    - name: Login to Azure using OIDC
       uses: azure/login@v1
       with:
-            creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-    - name: Deploy to Azure Web App
-      uses: azure/webapps-deploy@v2
-      with:
-        app-name: ${{ secrets.AZURE_APP_NAME }}
-        images: ${{ secrets.ACR_SERVER }}/mytrackstack-api:latest
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }} .
+
+    - name: Login to ACR
+      run: az acr login --name ${{ env.ACR_NAME }}
+
+    - name: Push Docker image to ACR
+      run: |
+        docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}
+
+    - name: Deploy to Azure Web App (Container)
+      run: |
+        az webapp config container set \
+          --name ${{ env.AZURE_WEBAPP_NAME }} \
+          --resource-group MyTrackStackRG \
+          --docker-custom-image-name ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }} \
+          --docker-registry-server-url https://${{ env.ACR_NAME }}.azurecr.io
