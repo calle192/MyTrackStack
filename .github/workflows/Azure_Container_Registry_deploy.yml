@@ -1,61 +1,41 @@
-name: Build and Deploy Docker App to Azure Web App
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
-      - master
+      - main
 
 permissions:
-  id-token: write
-  contents: read
-
-env:
-  ACR_NAME: mytrackstackregistry
-  IMAGE_NAME: mytrackstack-api
-  AZURE_WEBAPP_NAME: mytrackstack-api
-  RESOURCE_GROUP: MyTrackStackRG
-  DOCKER_TAG: latest
+  id-token: write     # Required for OIDC token request
+  contents: read      # Default for actions/checkout
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Azure Login via OIDC
-        uses: azure/login@v2
+      - name: Log in to Azure using OIDC
+        uses: azure/login@v1
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-oidc: true
 
-      - name: Docker Login to ACR
-        uses: docker/login-action@v3
+      - name: Build Docker image
+        run: |
+          docker build -t myacr.azurecr.io/myapp:${{ github.sha }} .
+
+      - name: Push Docker image to ACR
+        run: |
+          echo ${{ secrets.AZURE_CLIENT_ID }} | docker login myacr.azurecr.io --username ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
+          docker push myacr.azurecr.io/myapp:${{ github.sha }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          registry: ${{ env.ACR_NAME }}.azurecr.io
-          username: 00000000-0000-0000-0000-000000000000
-          password: dummy  # Required but ignored with OIDC, safe placeholder
-
-      - name: Build Docker Image
-        run: |
-          docker build -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }} .
-
-      - name: Push Docker Image to ACR
-        run: |
-          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}
-
-      - name: Deploy to Azure Web App (Container)
-        run: |
-          az webapp config container set \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --docker-custom-image-name ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }} \
-            --docker-registry-server-url https://${{ env.ACR_NAME }}.azurecr.io
-
-      - name: Restart Web App (optional)
-        run: |
-          az webapp restart \
-            --name ${{ env.AZURE_WEBAPP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }}
+          app-name: my-webapp-name
+          images: myacr.azurecr.io/myapp:${{ github.sha }}
