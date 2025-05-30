@@ -1,40 +1,52 @@
-name: CI/CD Pipeline
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy container app to Azure Web App - MyTrackStack-API
 
 on:
   push:
     branches:
       - master
-
-permissions:
-  id-token: write     # Required for OIDC token request
-  contents: read      # Default for actions/checkout
+  workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Log in to Azure using OIDC
-        uses: azure/login@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to container registry
+        uses: docker/login-action@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          registry: https://mytrackstackregistry.azurecr.io/
+          username: ${{ secrets.AzureAppService_ContainerUsername_99661bd599854885964d7874feccfc01 }}
+          password: ${{ secrets.AzureAppService_ContainerPassword_8b9ef9583e5747f2a52e24ef8cc5dc9b }}
 
-      - name: Build Docker image
-        run: |
-          docker build -t myacr.azurecr.io/myapp:${{ github.sha }} .
-
-      - name: Push Docker image to ACR
-        run: |
-          echo ${{ secrets.AZURE_CLIENT_ID }} | docker login myacr.azurecr.io --username ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
-          docker push myacr.azurecr.io/myapp:${{ github.sha }}
-
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
+      - name: Build and push container image to registry
+        uses: docker/build-push-action@v3
         with:
-          app-name: my-webapp-name
-          images: myacr.azurecr.io/myapp:${{ github.sha }}
+          context: .
+          push: true
+          tags: mytrackstackregistry.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_99661bd599854885964d7874feccfc01 }}/mytrackstackregistry.azurecr.io/MyTrackStack:latest:${{ github.sha }}
+          file: ./Dockerfile
+
+    deploy:
+      runs-on: ubuntu-latest
+      needs: build
+      environment:
+        name: 'Production'
+        url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+
+      steps:
+        - name: Deploy to Azure Web App
+          id: deploy-to-webapp
+          uses: azure/webapps-deploy@v2
+          with:
+            app-name: 'MyTrackStack-API'
+            slot-name: 'Production'
+            publish-profile: ${{ secrets.AzureAppService_PublishProfile_7af3718de47f4f8992945263a726ccbf }}
+            images: 'mytrackstackregistry.azurecr.io/${{ secrets.AzureAppService_ContainerUsername_99661bd599854885964d7874feccfc01 }}/mytrackstackregistry.azurecr.io/MyTrackStack:latest:${{ github.sha }}'
